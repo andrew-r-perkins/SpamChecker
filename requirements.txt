@@ -1,0 +1,9 @@
+torch
+transformers
+tensorflow
+scikit-learn
+pandas
+joblib
+flask
+flask-cors
+pytest
