@@ -11,14 +11,6 @@ venv/
 env/
 ENV/
 
-# ── ML artifacts ──────────────────────────────────────────────────────────
-# Trained model weights and vectorizer — regenerate with:
-#   python -m src.tfidf_model.train
-models/
-
-# ── Data ──────────────────────────────────────────────────────────────────
-# Raw datasets — too large / sourced externally
-data/
 
 # ── Test / coverage ───────────────────────────────────────────────────────
 .pytest_cache/
