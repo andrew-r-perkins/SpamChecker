@@ -195,11 +195,13 @@ body {
   letter-spacing: 0.04em;
 }
 
-/* ── Dual Results Row ─────────────────────────────── */
+/* ── Results Row (1 / 2 / 3 panels) ──────────────── */
 .results-row {
   display: flex;
   gap: 16px;
   margin-top: 28px;
+  /* Prevents card height collapsing while /config loads (activeModels=[]) */
+  min-height: 160px;
 }
 
 /* Each panel takes equal width; override the standalone margin-top */
@@ -208,8 +210,8 @@ body {
   margin-top: 0;
 }
 
-/* Stack vertically on narrow screens */
-@media (max-width: 520px) {
+/* Stack vertically on narrow screens — wider breakpoint needed for 3 panels */
+@media (max-width: 720px) {
   .results-row { flex-direction: column; }
 }
 
@@ -371,16 +373,15 @@ body {
   margin-bottom: 10px;
 }
 
-/* ── Wide tooltip (two-column model comparison) ───── */
+/* ── Wide tooltip (dynamic width set via inline style) */
+/* Width is controlled by JS: 300px (1 model) / 520px (2) / 700px (3) */
 .info-tooltip-wide {
-  width: 520px;
   right: 0;
 }
 
-/* Two-column grid for the model comparison section */
+/* Model comparison grid — columns set dynamically via inline style */
 .info-cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   gap: 0 20px;
   margin-bottom: 14px;
 }

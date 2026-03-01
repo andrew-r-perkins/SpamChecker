@@ -3,64 +3,80 @@
  *
  * Architecture overview:
  *   <App>                — manages all state and API calls
- *     <InfoTooltip>      — hover badge showing both model metadata side-by-side
+ *     <InfoTooltip>      — hover badge showing active model metadata
  *     <ExamplesPanel>    — expandable panel of canned texts (shows on button click)
- *     <ResultPanel>      — colour-coded score + progress bar (one per model)
+ *     <ResultPanel>      — colour-coded score + progress bar (one per active model)
  *
  * Data flow:
- *   User types (or selects canned text)
- *     → useEffect fires after 600 ms debounce
- *       → POST /predict { text }
- *         → setState({ tfidf, mbert })
- *           → two <ResultPanel>s re-render with new scores
+ *   On mount  → GET /config → sets activeModels ([{key, name}, ...])
+ *   User types → useEffect fires after 600 ms debounce
+ *     → POST /predict { text }
+ *       → setState(scores)  e.g. { tfidf: 0.97, mbert: 0.95, distilbert: 0.94 }
+ *         → one <ResultPanel> per active model re-renders with new score
+ *
+ * Which models render depends entirely on what the server loaded at startup
+ * (controlled by api.py --models flag). No frontend changes needed when
+ * adding or removing models.
  */
 
 import { useState, useEffect, useRef } from 'react'
 
 // ---------------------------------------------------------------------------
 // Model metadata — displayed in the <InfoTooltip> hover card.
+// Add a new entry here whenever a new model is added to the backend.
 // ---------------------------------------------------------------------------
-const TFIDF_ROWS = [
-  { key: 'Type',         val: 'Classical ML' },
-  { key: 'Vectorizer',   val: 'TF-IDF (5,000 features)' },
-  { key: 'Architecture', val: '64 → 32 → Sigmoid' },
-  { key: 'Framework',    val: 'TensorFlow / Keras' },
-  { key: 'Epochs',       val: '5' },
-  { key: 'Speed',        val: 'Very fast (~1 ms)' },
-]
-
-const MBERT_ROWS = [
-  { key: 'Type',         val: 'Transformer (BERT)' },
-  { key: 'Base model',   val: 'bert-base-multilingual-cased' },
-  { key: 'Architecture', val: '12-layer, 179M params' },
-  { key: 'Framework',    val: 'PyTorch / HuggingFace' },
-  { key: 'Epochs',       val: '2  (fine-tuned)' },
-  { key: 'Speed',        val: 'Slower (~200 ms CPU)' },
-]
+const MODEL_INFO = {
+  tfidf: {
+    heading: 'TF-IDF + NN',
+    rows: [
+      { key: 'Type',          val: 'Classical ML' },
+      { key: 'Vectorizer',    val: 'TF-IDF (5,000 features)' },
+      { key: 'Architecture',  val: '64 → 32 → Sigmoid' },
+      { key: 'Framework',     val: 'TensorFlow / Keras' },
+      { key: 'Epochs',        val: '5' },
+      { key: 'Test accuracy', val: '~98%' },
+      { key: 'Speed',         val: 'Very fast (~1 ms)' },
+    ],
+  },
+  mbert: {
+    heading: 'mBERT',
+    rows: [
+      { key: 'Type',          val: 'Transformer (BERT)' },
+      { key: 'Base model',    val: 'bert-base-multilingual-cased' },
+      { key: 'Architecture',  val: '12-layer, 179M params' },
+      { key: 'Framework',     val: 'PyTorch / HuggingFace' },
+      { key: 'Epochs',        val: '2  (fine-tuned)' },
+      { key: 'Test accuracy', val: '98.84% (epoch 2)' },
+      { key: 'Speed',         val: 'Slower (~200 ms CPU)' },
+    ],
+  },
+  distilbert: {
+    heading: 'DistilBERT',
+    rows: [
+      { key: 'Type',          val: 'Transformer (distilled BERT)' },
+      { key: 'Base model',    val: 'distilbert-base-multilingual-cased' },
+      { key: 'Architecture',  val: '6-layer, 66M params' },
+      { key: 'Framework',     val: 'PyTorch / HuggingFace' },
+      { key: 'Epochs',        val: '2  (fine-tuned)' },
+      { key: 'Test accuracy', val: 'TBD — needs training' },
+      { key: 'Speed',         val: '~2× faster than mBERT' },
+    ],
+  },
+}
 
 const SHARED_STATS = [
-  { key: 'Training data',   val: '5,171 labelled emails' },
-  { key: 'Train / test',    val: '80% / 20% split' },
-  { key: 'TF-IDF accuracy', val: '~98%' },
-  { key: 'mBERT accuracy',  val: '98.84% (epoch 2)' },
+  { key: 'Training data', val: '5,171 labelled emails' },
+  { key: 'Train / test',  val: '80% / 20% split' },
+  { key: 'Label split',   val: 'Ham 71% / Spam 29%' },
 ]
 
 // ---------------------------------------------------------------------------
 // Canned example messages — grouped by expected model behaviour.
-//
-// WHY three categories?
-//   "Both say Ham"    — shows the models agree on obvious legitimate mail
-//   "Both say Spam"   — shows the models agree on obvious spam
-//   "May differ"      — the interesting cases:
-//     TF-IDF is keyword-based so it flags trigger words regardless of context.
-//     mBERT reads full context so it can tell "free tickets (work award)" from
-//     "free prize click here", and can catch subtle sales pitches that contain
-//     no classic spam words at all.
 // ---------------------------------------------------------------------------
 const CANNED_EXAMPLES = [
   {
     categoryLabel: '✅ Both say Ham',
-    categoryDesc:  'Clear legitimate messages — both models should give a low spam score.',
+    categoryDesc:  'Clear legitimate messages — all models should give a low spam score.',
     items: [
       {
         label: 'Meeting reminder',
@@ -86,7 +102,7 @@ const CANNED_EXAMPLES = [
   },
   {
     categoryLabel: '🚨 Both say Spam',
-    categoryDesc:  'Classic spam patterns — both models should give a high spam score.',
+    categoryDesc:  'Classic spam patterns — all models should give a high spam score.',
     items: [
       {
         label: 'Prize winner!!!',
@@ -113,7 +129,7 @@ const CANNED_EXAMPLES = [
     categoryLabel: '🔀 Models diverge',
     categoryDesc:
       'Each example exposes a different strength or weakness. ' +
-      'Watch how the two scores pull apart — and think about which model is right.',
+      'Watch how scores pull apart — and think about which model is right.',
     items: [
       {
         label: 'Job offer — TF-IDF over-triggers',
@@ -129,7 +145,7 @@ const CANNED_EXAMPLES = [
           'Best regards,\nClaire Sutton\nTalent Acquisition, Meridian Systems',
       },
       {
-        label: 'Spanish spam — mBERT multilingual',
+        label: 'Spanish spam — multilingual edge',
         text:
           'Asunto: \u00a1FELICITACIONES! Ha sido seleccionado como nuestro GANADOR\n\n' +
           'Estimado usuario,\n\n' +
@@ -140,7 +156,7 @@ const CANNED_EXAMPLES = [
           'HAGA CLIC AQU\u00cd PARA RECLAMAR SU PREMIO GRATIS AHORA',
       },
       {
-        label: 'Grandparent scam — mBERT fooled',
+        label: 'Grandparent scam — context fools BERT',
         text:
           'Hi Nan,\n\n' +
           'It is me, your grandson Jake. I am in a bit of trouble and too embarrassed ' +
@@ -159,10 +175,16 @@ const CANNED_EXAMPLES = [
 // ---------------------------------------------------------------------------
 // <InfoTooltip>
 // A small pill in the top-right corner of the card.
-// Shows a two-column comparison of both models on hover.
+// Renders one column per active model on hover.
 // ---------------------------------------------------------------------------
-function InfoTooltip() {
+function InfoTooltip({ activeModels }) {
   const [visible, setVisible] = useState(false)
+
+  // Tooltip width scales with number of active models
+  const tooltipWidth =
+    activeModels.length <= 1 ? 300
+    : activeModels.length === 2 ? 520
+    : 700
 
   return (
     <div
@@ -172,29 +194,29 @@ function InfoTooltip() {
     >
       ⓘ Model Info
 
-      {visible && (
-        <div className="info-tooltip info-tooltip-wide">
+      {visible && activeModels.length > 0 && (
+        <div className="info-tooltip info-tooltip-wide" style={{ width: tooltipWidth }}>
           <div className="info-heading">About these classifiers</div>
 
-          <div className="info-cols">
-            <div>
-              <div className="info-col-heading">TF-IDF Model</div>
-              {TFIDF_ROWS.map(({ key, val }) => (
-                <div className="info-row" key={key}>
-                  <span className="info-key">{key}</span>
-                  <span className="info-val">{val}</span>
+          <div
+            className="info-cols"
+            style={{ gridTemplateColumns: `repeat(${activeModels.length}, 1fr)` }}
+          >
+            {activeModels.map(({ key }) => {
+              const info = MODEL_INFO[key]
+              if (!info) return null
+              return (
+                <div key={key}>
+                  <div className="info-col-heading">{info.heading}</div>
+                  {info.rows.map(({ key: rowKey, val }) => (
+                    <div className="info-row" key={rowKey}>
+                      <span className="info-key">{rowKey}</span>
+                      <span className="info-val">{val}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <div>
-              <div className="info-col-heading">mBERT Model</div>
-              {MBERT_ROWS.map(({ key, val }) => (
-                <div className="info-row" key={key}>
-                  <span className="info-key">{key}</span>
-                  <span className="info-val">{val}</span>
-                </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
 
           <div className="info-shared">
@@ -215,7 +237,6 @@ function InfoTooltip() {
 // ---------------------------------------------------------------------------
 // <ExamplesPanel>
 // Expandable panel showing canned texts grouped by category.
-// Clicking a chip calls onSelect(text) which populates the textarea.
 // ---------------------------------------------------------------------------
 function ExamplesPanel({ onSelect }) {
   return (
@@ -287,13 +308,26 @@ function ResultPanel({ modelName, probability, loading }) {
 // <App> — main component
 // ---------------------------------------------------------------------------
 export default function App() {
+  const [activeModels, setActiveModels] = useState([])   // [{key, name}, ...]
   const [text,         setText]         = useState('')
   const [loading,      setLoading]      = useState(false)
-  const [result,       setResult]       = useState(null)
+  const [result,       setResult]       = useState(null) // { tfidf: float, ... }
   const [error,        setError]        = useState(null)
   const [showExamples, setShowExamples] = useState(false)
 
   const debounceRef = useRef(null)
+
+  // ── Fetch active models from server on mount ──────────────────────────────
+  useEffect(() => {
+    fetch('/config')
+      .then(r => r.json())
+      .then(d => setActiveModels(d.models ?? []))
+      .catch(() => {
+        // Fallback: show TF-IDF panel so UI is never completely empty
+        setActiveModels([{ key: 'tfidf', name: 'TF-IDF + NN' }])
+        setError('Could not load /config. Is api.py running on port 5000?')
+      })
+  }, [])
 
   // ── API call ─────────────────────────────────────────────────────────────
   const checkText = async (textToCheck) => {
@@ -311,12 +345,13 @@ export default function App() {
 
       const data = await res.json()
 
-      // Guard: if fields are missing the old api.py is probably still running
-      if (typeof data.tfidf !== 'number' || typeof data.mbert !== 'number') {
+      // Guard: ensure at least one active model returned a numeric score
+      const hasValid = activeModels.some(m => typeof data[m.key] === 'number')
+      if (!hasValid) {
         throw new Error('Unexpected response from API — restart api.py with the latest code')
       }
 
-      setResult({ tfidf: data.tfidf, mbert: data.mbert })
+      setResult(data)
 
     } catch (err) {
       console.error('[SpamChecker] predict error:', err)
@@ -350,7 +385,7 @@ export default function App() {
 
   const handleSelectExample = (exampleText) => {
     setText(exampleText)
-    setShowExamples(false)  // collapse the panel after selection
+    setShowExamples(false)
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -358,13 +393,13 @@ export default function App() {
     <div className="page">
       <div className="card">
 
-        <InfoTooltip />
+        <InfoTooltip activeModels={activeModels} />
 
         <div className="card-header">
           <span className="shield-icon">🛡️</span>
           <h1 className="title">Ham / Spam Checker</h1>
           <p className="subtitle">
-            Start typing — both models score automatically
+            Start typing — active models score automatically
             <span className="live-badge">● LIVE</span>
           </p>
         </div>
@@ -398,10 +433,17 @@ export default function App() {
         )}
 
         {/* Results row is ALWAYS rendered so card height never changes.
-            probability=null shows a placeholder; loading=true shows a pulse. */}
+            One panel per active model. probability=null shows a placeholder;
+            loading=true shows a pulse animation. */}
         <div className="results-row">
-          <ResultPanel modelName="TF-IDF" probability={result?.tfidf ?? null} loading={loading} />
-          <ResultPanel modelName="mBERT"  probability={result?.mbert ?? null} loading={loading} />
+          {activeModels.map(m => (
+            <ResultPanel
+              key={m.key}
+              modelName={m.name}
+              probability={result ? (result[m.key] ?? null) : null}
+              loading={loading}
+            />
+          ))}
         </div>
 
         {error && <div className="error-box">{error}</div>}

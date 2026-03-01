@@ -35,6 +35,7 @@ Thumbs.db
 
 # ── Model artifacts (large binaries) ─────────────────────────────────────
 models/mbert/
+models/distilbert/
 
 # ── Secrets ───────────────────────────────────────────────────────────────
 .env
