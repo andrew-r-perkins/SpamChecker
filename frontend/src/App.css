@@ -195,6 +195,24 @@ body {
   letter-spacing: 0.04em;
 }
 
+/* ── Dual Results Row ─────────────────────────────── */
+.results-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+/* Each panel takes equal width; override the standalone margin-top */
+.results-row > .result-panel {
+  flex: 1;
+  margin-top: 0;
+}
+
+/* Stack vertically on narrow screens */
+@media (max-width: 520px) {
+  .results-row { flex-direction: column; }
+}
+
 /* ── Result Panel ─────────────────────────────────── */
 .result-panel {
   margin-top: 28px;
@@ -325,7 +343,144 @@ body {
   text-align: right;
 }
 
+/* ── Result panel placeholder state ──────────────── */
+/* Shown before the user types anything */
+.result-panel--placeholder {
+  opacity: 0.45;
+}
+
+/* Pulsing bar shown while the API call is in-flight */
+.progress-fill--loading {
+  animation: progress-pulse 1.2s ease-in-out infinite;
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+@keyframes progress-pulse {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 0.75; }
+}
+
+/* ── Result model name label ──────────────────────── */
+.result-model-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #64748b;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+/* ── Wide tooltip (two-column model comparison) ───── */
+.info-tooltip-wide {
+  width: 520px;
+  right: 0;
+}
+
+/* Two-column grid for the model comparison section */
+.info-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 20px;
+  margin-bottom: 14px;
+}
+
+/* Per-column heading (TF-IDF Model / mBERT Model) */
+.info-col-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #818cf8;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Shared stats section below the two columns */
+.info-shared {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Collapse tooltip on narrow screens */
+@media (max-width: 560px) {
+  .info-tooltip-wide {
+    width: calc(100vw - 32px);
+    right: auto;
+    left: 0;
+  }
+  .info-cols { grid-template-columns: 1fr; }
+}
+
 /* ── Shared keyframe ──────────────────────────────── */
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ── Examples Panel ───────────────────────────────── */
+.examples-panel {
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  animation: fade-up 0.2s ease;
+}
+
+.examples-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.examples-group-label {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: 0.01em;
+}
+
+.examples-group-desc {
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.5;
+}
+
+.examples-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.example-chip {
+  padding: 6px 14px;
+  background: rgba(129, 140, 248, 0.1);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-radius: 99px;
+  color: #a5b4fc;
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+
+.example-chip:hover {
+  background: rgba(129, 140, 248, 0.22);
+  border-color: rgba(129, 140, 248, 0.5);
+  color: #c7d2fe;
+  transform: translateY(-1px);
+}
+
+/* Active state for the "Try Examples" toggle button */
+.btn-active {
+  background: rgba(129, 140, 248, 0.15) !important;
+  border-color: rgba(129, 140, 248, 0.35) !important;
+  color: #c7d2fe !important;
 }
