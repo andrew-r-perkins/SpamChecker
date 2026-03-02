@@ -327,7 +327,7 @@ export default function App() {
       .catch(() => {
         // Fallback: show TF-IDF panel so UI is never completely empty
         setActiveModels([{ key: 'tfidf', name: 'TF-IDF + NN' }])
-        setError('Could not load /config. Is api.py running on port 5000?')
+        setError('Could not load configuration. Is api.py running?')
       })
   }, [])
 
@@ -369,7 +369,7 @@ export default function App() {
       if (err.message === 'rate_limit') {
         setError('Too many requests — please wait a moment before trying again')
       } else {
-        setError('Could not reach the API. Is api.py running on port 5000?')
+        setError('Could not reach the API. Is api.py running?')
       }
 
     } finally {
