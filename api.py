@@ -131,8 +131,21 @@ LOADED = {}
 for key in args.models:
     display = MODEL_REGISTRY[key]["display"]
     logger.info("Loading %s...", display)
-    LOADED[key] = MODEL_REGISTRY[key]["loader"]()
-    logger.info("%s ready.", display)
+    try:
+        LOADED[key] = MODEL_REGISTRY[key]["loader"]()
+        logger.info("%s ready.", display)
+    except FileNotFoundError:
+        logger.warning("%s — model files not found, skipping.", display)
+    except Exception as e:
+        logger.warning("%s — failed to load (%s: %s), skipping.",
+                       display, type(e).__name__, e)
+
+if not LOADED:
+    logger.critical(
+        "No models loaded — cannot start. "
+        "Check that model files exist in ./models/"
+    )
+    raise SystemExit(1)
 
 active = ", ".join(MODEL_REGISTRY[k]["display"] for k in LOADED)
 logger.info("Models active: %s — API is live on http://localhost:5000", active)
@@ -207,7 +220,11 @@ def predict():
 
     scores = {}
     for key, obj in LOADED.items():
-        scores[key] = float(MODEL_REGISTRY[key]["scorer"](obj, text))
+        try:
+            scores[key] = float(MODEL_REGISTRY[key]["scorer"](obj, text))
+        except Exception as e:
+            logger.error("Inference error for %s: %s", key, e)
+            return jsonify({"error": "Prediction failed — please try again"}), 500
 
     score_str = " | ".join(f"{k}: {v:.4f}" for k, v in scores.items())
     logger.info("POST /predict — %d chars → %s", len(text), score_str)
