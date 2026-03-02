@@ -5,8 +5,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     proxy: {
+      '/config':  'http://localhost:5000',
       '/predict': 'http://localhost:5000',
-      '/health': 'http://localhost:5000',
+      '/health':  'http://localhost:5000',
     },
   },
 })

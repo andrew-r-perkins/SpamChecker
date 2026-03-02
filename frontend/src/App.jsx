@@ -58,7 +58,7 @@ const MODEL_INFO = {
       { key: 'Architecture',  val: '6-layer, 66M params' },
       { key: 'Framework',     val: 'PyTorch / HuggingFace' },
       { key: 'Epochs',        val: '2  (fine-tuned)' },
-      { key: 'Test accuracy', val: 'TBD — needs training' },
+      { key: 'Test accuracy', val: '98.84% (epoch 2)' },
       { key: 'Speed',         val: '~2× faster than mBERT' },
     ],
   },
@@ -75,7 +75,7 @@ const SHARED_STATS = [
 // ---------------------------------------------------------------------------
 const CANNED_EXAMPLES = [
   {
-    categoryLabel: '✅ Both say Ham',
+    categoryLabel: '✅ Most models will say Ham',
     categoryDesc:  'Clear legitimate messages — all models should give a low spam score.',
     items: [
       {
@@ -101,7 +101,7 @@ const CANNED_EXAMPLES = [
     ],
   },
   {
-    categoryLabel: '🚨 Both say Spam',
+    categoryLabel: '🚨 Most models will say Spam',
     categoryDesc:  'Classic spam patterns — all models should give a high spam score.',
     items: [
       {
