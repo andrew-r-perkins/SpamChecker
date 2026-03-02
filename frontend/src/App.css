@@ -485,3 +485,15 @@ body {
   border-color: rgba(129, 140, 248, 0.35) !important;
   color: #c7d2fe !important;
 }
+
+/* ── Character counter ────────────────────────────── */
+.char-counter {
+  text-align: right;
+  font-size: 0.78rem;
+  color: #475569;
+  margin-top: 6px;
+  transition: color 0.2s;
+}
+
+.char-counter--warning { color: #f59e0b; }
+.char-counter--danger  { color: #f87171; font-weight: 600; }

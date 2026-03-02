@@ -307,6 +307,8 @@ function ResultPanel({ modelName, probability, loading }) {
 // ---------------------------------------------------------------------------
 // <App> — main component
 // ---------------------------------------------------------------------------
+const MAX_CHARS = 10_000
+
 export default function App() {
   const [activeModels, setActiveModels] = useState([])   // [{key, name}, ...]
   const [text,         setText]         = useState('')
@@ -331,6 +333,12 @@ export default function App() {
 
   // ── API call ─────────────────────────────────────────────────────────────
   const checkText = async (textToCheck) => {
+    // Client-side guard — mirrors the server-side MAX_TEXT_CHARS limit
+    if (textToCheck.length > MAX_CHARS) {
+      setError(`Text is too long — max ${MAX_CHARS.toLocaleString()} characters`)
+      return
+    }
+
     setLoading(true)
     setError(null)
 
@@ -341,6 +349,9 @@ export default function App() {
         body: JSON.stringify({ text: textToCheck }),
       })
 
+      if (res.status === 429) {
+        throw new Error('rate_limit')
+      }
       if (!res.ok) throw new Error(`Server responded with ${res.status}`)
 
       const data = await res.json()
@@ -355,7 +366,11 @@ export default function App() {
 
     } catch (err) {
       console.error('[SpamChecker] predict error:', err)
-      setError('Could not reach the API. Is api.py running on port 5000?')
+      if (err.message === 'rate_limit') {
+        setError('Too many requests — please wait a moment before trying again')
+      } else {
+        setError('Could not reach the API. Is api.py running on port 5000?')
+      }
 
     } finally {
       setLoading(false)
@@ -411,6 +426,10 @@ export default function App() {
           onChange={(e) => setText(e.target.value)}
           placeholder="Paste your email or message here, or try a canned example below…"
         />
+
+        <div className={`char-counter${text.length > 9500 ? ' char-counter--danger' : text.length > 8000 ? ' char-counter--warning' : ''}`}>
+          {text.length.toLocaleString()} / {MAX_CHARS.toLocaleString()}
+        </div>
 
         <div className="button-row">
           <button
