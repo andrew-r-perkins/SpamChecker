@@ -40,3 +40,16 @@ models/distilbert/
 # ── Secrets ───────────────────────────────────────────────────────────────
 .env
 .env.*
+
+# ── Cloud credentials ─────────────────────────────────────────────────────
+.aws/
+.gcloud/
+.azure/
+.config/gcloud/
+
+# ── Certificates & private keys ───────────────────────────────────────────
+*.pem
+*.key
+*.p12
+*.pfx
+service-account*.json
