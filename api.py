@@ -161,6 +161,25 @@ logger.info("Models active: %s — API is live on http://localhost:5000", active
 
 
 # ---------------------------------------------------------------------------
+# Security headers — injected into every response automatically.
+# ---------------------------------------------------------------------------
+
+@app.after_request
+def add_security_headers(response):
+    # Prevent browsers from MIME-sniffing the content-type
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    # Prevent responses being embedded in iframes (clickjacking)
+    response.headers["X-Frame-Options"] = "DENY"
+    # Don't leak the URL in the Referer header on outbound links
+    response.headers["Referrer-Policy"] = "no-referrer"
+    # This API only serves JSON — no scripts, styles, or media needed
+    response.headers["Content-Security-Policy"] = "default-src 'none'"
+    # Disable browser features this API has no need for
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    return response
+
+
+# ---------------------------------------------------------------------------
 # Error handlers
 # ---------------------------------------------------------------------------
 
