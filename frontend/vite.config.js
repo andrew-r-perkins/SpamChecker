@@ -13,7 +13,7 @@ export default defineConfig({
       'Referrer-Policy': 'no-referrer',
       // Allow scripts/styles from same origin; inline styles needed for Vite HMR
       'Content-Security-Policy':
-        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'",
+        "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'",
       // Disable browser features the app doesn't use
       'Permissions-Policy': 'geolocation=(), microphone=(), camera=()',
     },
