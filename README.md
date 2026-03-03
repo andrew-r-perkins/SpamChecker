@@ -6,7 +6,11 @@ give their verdicts simultaneously.
 
 **Stack:** Flask REST API · React + Vite frontend · TensorFlow · PyTorch · HuggingFace
 
-<img width="360" height="437" alt="image" src="https://github.com/user-attachments/assets/8fc90ee5-7ed2-468d-a8a6-a9f1828b6448" />
+<div align="center">
+  <img width="360" alt="Ham/Spam Checker UI" src="https://github.com/user-attachments/assets/8fc90ee5-7ed2-468d-a8a6-a9f1828b6448" />
+  <br/>
+  <em>Job offer example — TF-IDF over-triggers on spam keywords while mBERT and DistilBERT correctly identify it as ham</em>
+</div>
 
 ---
 
