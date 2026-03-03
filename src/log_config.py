@@ -7,6 +7,14 @@ Verbosity levels (set via command-line flags):
   -vv        DEBUG    — detailed diagnostics: shapes, sizes, timings
   -vvv       TRACE    — very verbose internals: feature vectors, top TF-IDF terms
 
+File logging:
+  Every run writes a timestamped log file to LOG_DIR (default: logs/).
+  The file always captures TRACE and above regardless of console verbosity,
+  so full detail is available for post-mortem debugging.
+  Files are rotated at LOG_MAX_BYTES; LOG_BACKUP_COUNT rotated copies are
+  kept per session. On startup, old session files beyond LOG_MAX_SESSIONS
+  are pruned (oldest first, including their rotated siblings).
+
 Usage in any CLI entry point:
     import argparse
     from src.log_config import add_verbosity_args, setup_logging
@@ -20,8 +28,12 @@ Then use logger.trace(...) anywhere for TRACE-level output, or
 logger.debug / .info / .warning as normal.
 """
 
-import logging
 import argparse
+import glob
+import logging
+import os
+from datetime import datetime
+from logging.handlers import RotatingFileHandler
 
 # ---------------------------------------------------------------------------
 # TRACE — custom level below DEBUG (10) for very granular internals output.
@@ -55,6 +67,43 @@ _VERBOSITY_MAP = {
 _LOG_FORMAT  = "%(asctime)s  %(levelname)-8s  %(name)s — %(message)s"
 _DATE_FORMAT = "%Y-%m-%d %H:%M:%S"
 
+# ---------------------------------------------------------------------------
+# File logging configuration — edit these constants to change behaviour.
+# ---------------------------------------------------------------------------
+LOG_DIR          = "logs"           # directory for log files (relative to project root)
+LOG_MAX_BYTES    = 5 * 1024 * 1024  # 5 MB — rotate when a log file exceeds this size
+LOG_BACKUP_COUNT = 3                # rotated files kept per session (.log.1 / .2 / .3)
+LOG_MAX_SESSIONS = 10               # max session log files kept; oldest are deleted on startup
+
+
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _prune_old_logs() -> None:
+    """Delete oldest session log files (and their rotated siblings) so that
+    after the new session file is created there are at most LOG_MAX_SESSIONS
+    base files in LOG_DIR."""
+    # Base files only (e.g. api_20260303_143022.log) — glob won't match .log.1 etc.
+    base_files = sorted(glob.glob(os.path.join(LOG_DIR, "api_*.log")))
+
+    # Allow (LOG_MAX_SESSIONS - 1) existing files so the new session fits within the cap
+    excess = len(base_files) - (LOG_MAX_SESSIONS - 1)
+    if excess <= 0:
+        return
+
+    for base in base_files[:excess]:
+        # Remove the base file and any rotated siblings (.log.1, .log.2, ...)
+        for path in glob.glob(base + "*"):
+            try:
+                os.remove(path)
+            except OSError:
+                pass  # already gone or permission issue — safe to ignore
+
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
 
 def add_verbosity_args(parser: argparse.ArgumentParser) -> None:
     """
@@ -78,26 +127,60 @@ def add_verbosity_args(parser: argparse.ArgumentParser) -> None:
 
 def setup_logging(verbosity: int) -> int:
     """
-    Configures the root logger based on the verbosity count from argparse.
+    Configures the root logger with a console handler and a rotating file handler.
+
+    Console handler: level controlled by verbosity flag (WARNING by default).
+    File handler:    always TRACE — captures everything for post-mortem debugging.
+
+    Safe to call multiple times — does nothing if handlers are already configured.
 
     Args:
         verbosity: integer (0–3+). Values above 3 are clamped to TRACE.
 
     Returns:
-        The resolved logging level integer (e.g. logging.DEBUG = 10).
+        The resolved console logging level integer (e.g. logging.INFO = 20).
     """
-    level = _VERBOSITY_MAP.get(min(verbosity, 3), TRACE)
+    root = logging.getLogger()
 
-    logging.basicConfig(
-        level=level,
-        format=_LOG_FORMAT,
-        datefmt=_DATE_FORMAT,
+    # Guard: basicConfig / previous call already configured handlers
+    if root.handlers:
+        return _VERBOSITY_MAP.get(min(verbosity, 3), TRACE)
+
+    console_level = _VERBOSITY_MAP.get(min(verbosity, 3), TRACE)
+    formatter     = logging.Formatter(_LOG_FORMAT, datefmt=_DATE_FORMAT)
+
+    # ── Console handler ────────────────────────────────────────────────────
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(console_level)
+    console_handler.setFormatter(formatter)
+
+    # ── File handler ───────────────────────────────────────────────────────
+    os.makedirs(LOG_DIR, exist_ok=True)
+    _prune_old_logs()
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_path  = os.path.join(LOG_DIR, f"api_{timestamp}.log")
+
+    file_handler = RotatingFileHandler(
+        log_path,
+        maxBytes=LOG_MAX_BYTES,
+        backupCount=LOG_BACKUP_COUNT,
+        encoding="utf-8",
     )
+    file_handler.setLevel(TRACE)   # capture everything — file is the full record
+    file_handler.setFormatter(formatter)
 
-    # This line itself is only visible at INFO or below
+    # ── Root logger ────────────────────────────────────────────────────────
+    # Set root level to the lowest of the two handlers so neither is silenced
+    # at the logger level before messages reach the handlers.
+    root.setLevel(min(console_level, TRACE))
+    root.addHandler(console_handler)
+    root.addHandler(file_handler)
+
     logging.getLogger(__name__).info(
-        "Verbosity=%d → log level: %s",
+        "Verbosity=%d → console level: %s | log file: %s",
         verbosity,
-        logging.getLevelName(level),
+        logging.getLevelName(console_level),
+        log_path,
     )
-    return level
+    return console_level
