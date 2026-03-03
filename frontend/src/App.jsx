@@ -68,6 +68,7 @@ const SHARED_STATS = [
   { key: 'Training data', val: '5,171 labelled emails' },
   { key: 'Train / test',  val: '80% / 20% split' },
   { key: 'Label split',   val: 'Ham 71% / Spam 29%' },
+  { key: 'Dataset',       val: 'Spam Mails Dataset (Kaggle)', href: 'https://www.kaggle.com/datasets/venky73/spam-mails-dataset' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -221,10 +222,14 @@ function InfoTooltip({ activeModels }) {
 
           <div className="info-shared">
             <div className="info-col-heading">Shared training details</div>
-            {SHARED_STATS.map(({ key, val }) => (
+            {SHARED_STATS.map(({ key, val, href }) => (
               <div className="info-row" key={key}>
                 <span className="info-key">{key}</span>
-                <span className="info-val">{val}</span>
+                <span className="info-val">
+                  {href
+                    ? <a href={href} target="_blank" rel="noreferrer">{val}</a>
+                    : val}
+                </span>
               </div>
             ))}
           </div>
@@ -278,7 +283,7 @@ function ResultPanel({ modelName, probability, loading }) {
   const isSpam = isReady && pct >= 50
   const color  = isReady ? (isSpam ? '#f87171' : '#4ade80') : '#475569'
   const label  = loading  ? 'Analysing…'
-               : isReady  ? (isSpam ? '🚨 Likely Spam' : '✅ Looks Like Ham')
+               : isReady  ? (isSpam ? '❌ Likely Spam' : '✅ Looks Like Ham')
                :             '— awaiting input —'
 
   return (
