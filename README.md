@@ -6,6 +6,8 @@ give their verdicts simultaneously.
 
 **Stack:** Flask REST API · React + Vite frontend · TensorFlow · PyTorch · HuggingFace
 
+<img width="720" height="873" alt="image" src="https://github.com/user-attachments/assets/8fc90ee5-7ed2-468d-a8a6-a9f1828b6448" />
+
 ---
 
 ## Models
