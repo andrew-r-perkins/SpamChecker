@@ -35,6 +35,7 @@ Must be run from the project root so relative model paths resolve correctly.
 
 import argparse
 import logging
+import os
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
@@ -102,7 +103,15 @@ MODEL_REGISTRY = {
 # Flask app setup
 # ---------------------------------------------------------------------------
 app = Flask(__name__)
-CORS(app)   # allow Vite dev server (localhost:5173); restrict in production
+
+# Restrict CORS to specific origins.
+# Dev default: Vite dev server on localhost:5173.
+# Production: set ALLOWED_ORIGINS=https://yoursite.com before starting api.py.
+# Multiple origins: comma-separated, e.g. "https://a.com,https://b.com".
+_raw_origins = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173")
+ALLOWED_ORIGINS = [o.strip() for o in _raw_origins.split(",")]
+CORS(app, origins=ALLOWED_ORIGINS)
+logger.info("CORS allowed origins: %s", ALLOWED_ORIGINS)
 
 # Hard limit on incoming request body size — Flask returns 413 automatically
 # if the Content-Length header exceeds this before the route is even called.
