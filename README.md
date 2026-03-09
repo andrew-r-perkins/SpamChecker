@@ -1,6 +1,6 @@
 # Ham / Spam Checker
 
-A spam classifier that runs three machine-learning models side-by-side and scores
+AI spam classifier that runs three machine-learning models side-by-side and scores
 emails in real time. Paste any message and watch TF-IDF, mBERT, and DistilBERT
 give their verdicts simultaneously.
 
